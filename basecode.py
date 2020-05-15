@@ -87,6 +87,134 @@ def send_information(message):
     bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments after your risk appetite has been determined and your current investment has been captured.")
 
 
+#############################################################################################################################################
+
+@bot.message_handler(commands=['begin'])
+def questionaire_1(message):
+
+    option1={'Always stop at yellow no matter what.':1,'Break and stop at the light. You’re late anyway, right?':2,'You blow through that sucker!':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'You are driving to meet some friends. You’re running late. The traffic light ahead turns yellow. What will you do?' + 
+    "Next question: /Q2",
+    reply_markup=keyboard
+    )
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def iq_callback(query, score=[]):
+    data = query.data
+    int_data=int(data)
+    score += [int_data]
+    print(score)
+
+    if len(score)==4:
+        total= sum(score)
+        if total== 4:
+            risk_level= "low"
+        elif total<=6:
+            risk_level='moderate'
+        elif total<=8:
+            risk_level='High'
+        else:
+            risk_level='Very High'
+
+        return risk_level
+
+    elif len(score)>4:
+        score=[]
+        print(score)
+        print("hello")
+    
+    
+
+
+@bot.message_handler(commands=['Q2'])
+def questionaire_2(message):
+
+    option1={'Hear this stuff all the time, know it’s not true and ignore her.':1,'Nod, squint your eyes, log onto E*Trade and invest a grand.':2,'Take 5k of that money you had for a rainy day and invest.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'Your friend gives you a tip. She heard this stock is gonna go through the roof in the next week. What is your reaction?'+
+    "Next question: /Q3",
+    reply_markup=keyboard
+    )
+
+
+    
+@bot.message_handler(commands=['Q3'])
+def questionaire_3(message):
+
+    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':1,
+    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':2,
+    'Immediately excuse yourself and head across the room.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'You are a really cool cocktail party. Your spouse is home. You see this seriously smoking hottie across the room. What will you do?'+
+    "Next Question: /Q4",
+    reply_markup=keyboard
+    )
+
+    
+@bot.message_handler(commands=['Q4'])
+def questionaire_4(message):
+
+    option1={'Put your head down in shame.':1,'Chuckle with most of the crowd.':2,
+    'Realize this is your time to shine and head up to the front.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'It’s the dreaded annual company Christmas party.'+
+    'The COO is a little enebriated and asks if anyone else would like to get up to attest to the company’s good fortune. What will you do?'+
+    "To view results: /results",
+    reply_markup=keyboard
+    )
+
+@bot.message_handler(commands=['results'])
+def results(message):
+    bot.reply_to(message, "Base on the questionnaire you are a __<need to extract the risk level>__ risk taker. Please input your desired amount for investment under /invest")
+
+
+
+############################################################################################################################################
+
+
+
 @bot.message_handler(commands=['invest'])
 def send_invest(message):
     userid = message.chat.id
