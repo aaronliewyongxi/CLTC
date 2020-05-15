@@ -11,13 +11,13 @@ import json
 import calendar
 import pymysql.cursors
  
-with open('bottoken.txt','r') as tokenFile:
-    bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = bot_token)
+# with open('bottoken.txt','r') as tokenFile:
+#     bot_token = tokenFile.read()
+bot = telebot.TeleBot(token = '1044274360:AAH8XZiyYx2aHnyOOAfXS1whKYp3x4IwOoA')
  
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
-def DBconnection(sql_statement, data):
+def DBconnection(sql_statement):
     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
     
     with conn:
@@ -36,8 +36,13 @@ def matrix(risk_level, capital):
     financial_instruments = []
     sql_statement = ''
     total_value = 0
-    if(capital < 10000 & risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
+
+    sql_keyword_dict = {}
+
+    # risk_level: low, mid, high
+
+    if(capital < 10000 and risk_level == 'low'):
+        sql_statement = ['select financial_plans, total_value from plans where risk_level = {}']
         data = DBconnection(sql_statement)
         financial_instruments = [data[0]]
         total_value = [data[1]]
