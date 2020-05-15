@@ -25,8 +25,11 @@ def DBconnection(sql_statement):
         cur = conn.cursor()
         cur.execute(sql_statement)
         
-        list_of_data = cur.fetchall()
-        return list_of_data
+        rows = cur.fetchall()
+        data = []
+        for row in rows:
+            data.append(row)
+        return data
 
 def matrix(risk_level, capital):
     #self-declared matrix function to suggest a variety of financial plans according to risk level
