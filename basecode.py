@@ -16,6 +16,7 @@ with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
 
+#Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 def DBconnection(sql_statement):
     conn = pymysql.connect('localhost','root','passwrd','XTASFinanceBot')
     
@@ -42,6 +43,13 @@ def matrix(risk_level, capital):
 
 def questionaire(userid):
     risk_level = ''
+    sql_statement = "SELECT * from telegramusers where userid = {userid}"
+    conn = DBconnection(sql_statement)
+    if (conn == ''):
+        sql_statement = "INSERT INTO telegramusers (userid, risk_level,capital) VALUES({userid},'','')"
+    else:
+        #Need to do the questionaires here to determine risk level
+        sql_statement = "UPDATE telegramusers SET risk_level = {risk_level}"
     #use telegram userid to get risk level
     return risk_level
 
@@ -72,19 +80,3 @@ while True:
         t.sleep(15)
 
 
-def matrix(risk_level, capital):
-    #self-declared matrix function to suggest a variety of financial plans according to risk level
-    financial_instruments = []
-    sql_statement = ''
-    total_value = 0
-    if(capital < 10000 & risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
-        financial_instruments = [sql_statement[0]]
-        total_value = [sql_statement[1]]
-        
-    return financial_instruments
-
-def questionaire(userid):
-    risk_level = ''
-    #use telegram userid to get risk level
-    return risk_level
