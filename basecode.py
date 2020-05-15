@@ -56,3 +56,21 @@ while True:
         bot.polling()
     except Exception:
         t.sleep(15)
+
+
+def matrix(risk_level, capital):
+    #self-declared matrix function to suggest a variety of financial plans according to risk level
+    financial_instruments = []
+    sql_statement = ''
+    total_value = 0
+    if(capital < 10000 & risk_level == 'low'):
+        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
+        financial_instruments = [sql_statement[0]]
+        total_value = [sql_statement[1]]
+        
+    return financial_instruments
+
+def questionaire(userid):
+    risk_level = ''
+    #use telegram userid to get risk level
+    return risk_level
