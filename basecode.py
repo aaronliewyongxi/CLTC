@@ -37,8 +37,9 @@ def matrix(risk_level, capital):
     sql_statement = ''
     total_value = 0
     if(capital < 10000 & risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
-        data = DBconnection(sql_statement)
+        sql_statement = ['select financial_plans, total_value from plans where risk_level = %r']
+        conn = "low"
+        data = DBconnection(sql_statement, conn)
         financial_instruments = [data[0]]
         total_value = [data[1]]
         
@@ -68,7 +69,8 @@ def send_welcome(message):
     first_sql_run = userid
     first = DBconnection(first_sql_statement,first_sql_run)
     if first:
-        bot.reply_to(message, 'Welcome back' + str(userid) + ' type /information to find out more')
+        username = message.chat.first_name
+        bot.reply_to(message, 'Welcome back' + str(username) + ' type /information to find out more')
     else:
         sql_statement = """INSERT INTO telegramusers (userid, risk_level,capital) VALUES(%s,%s,%s)"""
         sql_run = (userid, '', 0)
@@ -81,41 +83,35 @@ def send_welcome(message):
 def send_information(message):
     bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments")
 
-def findCapital(msg):
-    sieveNumbers = [int(i) for i in msg if i.isdigit()]
-    return sieveNumbers
 
 @bot.message_handler(commands=['invest'])
 def send_invest(message):
     userid = message.chat.id
-    sql_statement = "SELECT capital from telegramusers where userid = %s"
-    sql_data = userid
-    conn = DBconnection(sql_statement,sql_data)
-    capital = findCapital(message)
+    sql_statement = "Select capital from telegramusers where userid = %r"
+    conn = DBconnection(sql_statement,userid)
+
+    bot.reply_to(message, "Your current capital investment is " + conn[0] + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+#'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
+def findCapital(msg):
+    for word in msg:
+        if '$' in msg:
+            return word
+
+@bot.message_handler(func=lambda msg:msg.text is not None and '$' in msg.text)
+def getCapital(message):
+    userid = message.chat.id
+    sentence = message.text.split()
+    sentence = sentence[1]
+    capital = sentence[1:]
+    sql_statement = "UPDATE telegramusers set capital = %r where userid = %r"
+    data = (float(capital), userid)
+    conn = DBconnection(sql_statement,data)
     
-    if conn == 0 and capital == '':
-        bot.reply_to(message,"We will choose selected financial instruments according to your investment, how much would you like to invest?, Please type /invest amount, for example /invest 50000")
-    elif capital:
-        sql_statement = "UPDATE telegramusers SET capital = %s where userid = %s"
-        sql_data = (capital, userid)
-        conn = DBconnection(sql_statement,sql_data)
-    else:
-        sql_statement = 'SELECT risk_level, capital from telegramusers where userid = %s'
-        data_connect = userid
-        result = DBconnection(sql_statement,data_connect)
-        if result[0] == 'low': 
-        #Ideally based on user's risk level, set a certain percentage to high risk stocks, mid risk stocks & low risk stocks
-            sql_statement = 'SELECT stock_name, unit_price from financial_instruments where risk_level = %r'
-            conn = "low"
-            result = DBconnection(sql_statement,conn)
-        elif result[0] == 'moderate':
-            sql_statement  = "SELECT stock_name, unit_price from financial_instruments where risk_level = %r"
-            conn = "moderate"
-            result = DBconnection(sql_statement,conn)
-        else:
-            sql_statement  = "SELECT stock_name, unit_price from financial_instruments where risk_level = %r"
-            conn = "high"
-            result = DBconnection(sql_statement, conn)
+    bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
+
+    
+
+    
 while True:
     try:
         bot.polling()
