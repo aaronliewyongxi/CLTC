@@ -16,36 +16,27 @@ with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
 
-def connection():
-    conn = pymysql.connect(host='root',user='user',password='',db='XTASFinanceBot')
-    try:
-    with conn.cursor() as cursor:
-        # Create a new record
-        sql = "INSERT INTO `users` (`email`, `password`) VALUES (%s, %s)"
-        cursor.execute(sql, ('webmaster@python.org', 'very-secret'))
-
-    # connection is not autocommit by default. So you must commit to save
-    # your changes.
-    conn.commit()
-
-    with conn.cursor() as cursor:
-        # Read a single record
-        sql = "SELECT `id`, `password` FROM `users` WHERE `email`=%s"
-        cursor.execute(sql, ('webmaster@python.org',))
-        result = cursor.fetchone()
-        print(result)
-finally:
-    conn.close()
+def DBconnection(sql_statement):
+    conn = pymysql.connect('localhost','root','passwrd','XTASFinanceBot')
+    
+    with conn:
+        cur = conn.cursor()
+        cur.execute(sql_statement)
+        
+        list_of_data = cur.fetchall()
+        return list_of_data
 
 def matrix(risk_level, capital):
     #self-declared matrix function to suggest a variety of financial plans according to risk level
+    
     financial_instruments = []
     sql_statement = ''
     total_value = 0
     if(capital < 10000 & risk_level == 'low'):
         sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
-        financial_instruments = [sql_statement[0]]
-        total_value = [sql_statement[1]]
+        data = DBconnection(sql_statement)
+        financial_instruments = [data[0]]
+        total_value = [data[1]]
         
     return financial_instruments
 
