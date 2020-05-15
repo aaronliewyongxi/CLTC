@@ -17,6 +17,7 @@ with open('bottoken.txt','r') as tokenFile:
 bot = telebot.TeleBot(token = bot_token)
 
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
+#Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement):
     conn = pymysql.connect('localhost','root','passwrd','XTASFinanceBot')
     
@@ -64,15 +65,19 @@ def send_information(message):
 @bot.message_handler(commands=['invest'])
 def send_invest(message):
     bot.reply_to(message,"We will choose selected financial instruments according to your investment")
-    result = cur.execute('SELECT risk_level from user')
+    sql_statement = 'SELECT risk_level from telegramusers'
+    result = DBconnection(sql_statement)
 
     if result == 'low': 
         #Ideally based on user's risk level, set a certain percentage to high risk stocks, mid risk stocks & low risk stocks
-        financial_products = [cur.execute("SELECT stock_name, unit_price from financial_instruments where risk_level = low")]
+        sql_statement = "SELECT stock_name, unit_price from financial_instruments where risk_level = low"
+        result = DBconnection(sql_statement)
     elif result == 'moderate':
-        financial_products = [cur.execute("SELECT stock_name, unit_price from financial_instruments where risk_level = moderate")]
+        sql_statement  = "SELECT stock_name, unit_price from financial_instruments where risk_level = moderate"
+        result = DBconnection(sql_statement)
     else:
-        financial_products = [cur.execute("SELECT stock_name, unit_price from financial_instruments where risk_level = high")]
+        sql_statement  = "SELECT stock_name, unit_price from financial_instruments where risk_level = high"
+        result = DBconnection(sql_statement)
 while True:
     try:
         bot.polling()
