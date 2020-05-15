@@ -42,7 +42,7 @@ def matrix(risk_level, capital):
     # risk_level: low, mid, high
 
     if(capital < 10000 and risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = {}']
+        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
         data = DBconnection(sql_statement)
         financial_instruments = [data[0]]
         total_value = [data[1]]
