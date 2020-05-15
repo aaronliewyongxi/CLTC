@@ -18,7 +18,7 @@ bot = telebot.TeleBot(token = bot_token)
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement):
-    conn = pymysql.connect('localhost','root','passwrd','XTASFinanceBot')
+    conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
     
     with conn:
         cur = conn.cursor()
