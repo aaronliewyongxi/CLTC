@@ -1,4 +1,4 @@
-rom uuid import uuid4
+from uuid import uuid4
 from telegram.ext import updater, CommandHandler, MessageHandler, Filters
 import telebot
 import time as t
@@ -9,15 +9,27 @@ import requests
 import os
 import json
 import calendar
-import mySQLdb
 
-bot_token = '1044274360:AAH8XZiyYx2aHnyOOAfXS1whKYp3x4IwOoA'
+with open('bottoken.txt','r') as tokenFile:
+    bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
-db = MySQLdb.connect(host="127.0.0.1",    # localhost
-                 user="root",         #  username
-                 passwd="",  #  password
-                 db="xtasfinancebot")        # name of the data base
-                 cur = db.cursor()
+
+def matrix(risk_level, capital):
+    #self-declared matrix function to suggest a variety of financial plans according to risk level
+    financial_instruments = []
+    sql_statement = ''
+    total_value = 0
+    if(capital < 10000 & risk_level == 'low'):
+        sql_statement = ['select financial_plans, total_value from plans where risk_level = low']
+        financial_instruments = [sql_statement[0]]
+        total_value = [sql_statement[1]]
+        
+    return financial_instruments
+
+def questionaire(userid):
+    risk_level = ''
+    #use telegram userid to get risk level
+    return risk_level
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
