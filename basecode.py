@@ -11,10 +11,10 @@ import json
 import calendar
 import pymysql.cursors
  
-with open('bottoken.txt','r') as tokenFile:
-    bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = bot_token)
- 
+# with open('bottoken.txt','r') as tokenFile:
+#     bot_token = tokenFile.read()
+bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
+
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement, data):
@@ -25,13 +25,14 @@ def DBconnection(sql_statement, data):
         cur.execute(sql_statement, data)
         
         rows = cur.fetchall()
+        print(rows)
         data = []
         for row in rows:
             data.append(row)
         return data
  
 def matrix(risk_level, capital):
-    #self-declared matrix function to suggest a variety of financial plans according to risk level
+    # self-declared matrix function to suggest a variety of financial plans according to risk level
 
     financial_instruments = []
     sql_statement = ''
@@ -109,6 +110,12 @@ def getCapital(message):
     bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
 
     
+@bot.message_handler(commands=['viewproposedproducts'])
+def send_proposed(message):
+    userid = message.chat.id
+    sql_statement = "Select capital, risk_level from telegramusers where userid = %r"
+    retrieved_data = DBconnection(sql_statement,userid)
+    print(retrieved_data[0])
 
     
 while True:
