@@ -1,0 +1,2 @@
+ cur.fetchall()
+        print(rows)

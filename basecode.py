@@ -11,11 +11,12 @@ import json
 import calendar
 import pymysql.cursors
 import yfinance as yf
+import re
  
 with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
- 
+
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement, data):
@@ -26,13 +27,14 @@ def DBconnection(sql_statement, data):
         cur.execute(sql_statement, data)
         
         rows = cur.fetchall()
+        print(rows)
         data = []
         for row in rows:
             data.append(row)
         return data
 
 def matrix(risk_level, capital):
-    #self-declared matrix function to suggest a variety of financial plans according to risk level
+    # self-declared matrix function to suggest a variety of financial plans according to risk level
 
     financial_instruments = []
     sql_statement = ''
@@ -71,18 +73,18 @@ def send_welcome(message):
     first = DBconnection(first_sql_statement,first_sql_run)
     if first:
         username = message.chat.first_name
-        bot.reply_to(message, 'Welcome back' + str(username) + ' type /information to find out more')
+        bot.reply_to(message, 'Welcome back ' + str(username) + '! type /information to find out more.\nType /commands to see all commands available.')
     else:
         sql_statement = """INSERT INTO telegramusers (userid, risk_level,capital) VALUES(%s,%s,%s)"""
         sql_run = (userid, '', 0)
         data = DBconnection(sql_statement, sql_run)
-        print(data)
+        # print(data)
         bot.reply_to(message, 'Im a Finance Advisor Bot created by Xiuling, Timothy, Aaron & Sean, type /information to find out more.')
         
 
 @bot.message_handler(commands=['information'])
 def send_information(message):
-    bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments")
+    bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments after your risk appetite has been determined and your current investment has been captured.")
 
 
 @bot.message_handler(commands=['invest'])
@@ -90,7 +92,28 @@ def send_invest(message):
     userid = message.chat.id
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
-    bot.reply_to(message, "Your current capital investment is " + conn[0] + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+    bot.reply_to(message, "Your current capital investment is " + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+
+@bot.message_handler(content_types=['text'])
+def setCapital(message):
+    userid = message.chat.id
+    sql_statement = ""
+    msg = message.text.lower()
+    msg = msg.strip()
+    if (msg[:6] == 'invest'):
+        amount = msg[6:].strip()
+        if (amount.isdigit() == False):
+            bot.send_message(userid, "Please make sure your investment value consists of only digits.")
+        else:
+            amount = float(amount)
+            sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
+            sql_run = (amount, userid)
+            DBconnection(sql_statement, sql_run)
+            bot.send_message(userid, "Your investment value has been demarcated.")
+
+
 #'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
 def findCapital(msg):
     for word in msg:
@@ -110,7 +133,16 @@ def getCapital(message):
     bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
 
     
+@bot.message_handler(commands=['viewproposedproducts'])
+def send_proposed(message):
+    userid = message.chat.id
+    sql_statement = "Select capital, risk_level from telegramusers where userid = %r"
+    retrieved_data = DBconnection(sql_statement,userid)
+    print(retrieved_data[0])
 
+@bot.message_handler(commands=['commands'])
+def display_commands(message):
+    bot.reply_to(message, "The possible commands here are:\n /start \n /information \n /invest \n /viewproposedproducts")
     
 while True:
     try:
