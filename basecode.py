@@ -11,9 +11,9 @@ import json
 import calendar
 import pymysql.cursors
  
-# with open('bottoken.txt','r') as tokenFile:
-#     bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = '1044274360:AAH8XZiyYx2aHnyOOAfXS1whKYp3x4IwOoA')
+with open('bottoken.txt','r') as tokenFile:
+    bot_token = tokenFile.read()
+bot = telebot.TeleBot(token = bot_token)
  
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
@@ -32,7 +32,7 @@ def DBconnection(sql_statement):
  
 def matrix(risk_level, capital):
     #self-declared matrix function to suggest a variety of financial plans according to risk level
-    
+
     financial_instruments = []
     sql_statement = ''
     total_value = 0
