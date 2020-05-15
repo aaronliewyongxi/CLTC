@@ -10,6 +10,7 @@ import os
 import json
 import calendar
 import pymysql.cursors
+import yfinance as yf
  
 with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
@@ -29,7 +30,7 @@ def DBconnection(sql_statement, data):
         for row in rows:
             data.append(row)
         return data
- 
+
 def matrix(risk_level, capital):
     #self-declared matrix function to suggest a variety of financial plans according to risk level
     
