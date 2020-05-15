@@ -1,17 +1,7 @@
 import yfinance as yf
 import datetime
-import pymysql.cursors
 import json
-
-def DBconnection(sql_statement, input_data):
-    conn = pymysql.connect(
-        'database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com', 'admin', 'password', 'XTASFinanceBot')
-
-    with conn:
-        cur = conn.cursor()
-        cur.execute(sql_statement, input_data)
-        rows = cur.fetchall()
-        return rows
+from basecode import DBconnection
 
 def get_stock_info(list_of_stocks):
     main_dict = {}
@@ -39,8 +29,7 @@ def get_stock_info(list_of_stocks):
 
         L2_dict = {'52WeekChange': '', 'dividendYield': '', 'marketCap': '', 'currency': '', 'previousClose': '',
                    'regularMarketOpen': '', 'regularMarketPrice': '', 'updated_as_of': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-    return main_dict
+    return
 
 
 def check_for_existing_stock(stock_id):
