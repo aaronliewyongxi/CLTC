@@ -101,9 +101,10 @@ def call_matrix(message):
     capital = DBconnection(select_capital,userid)
     capital = float(capital[0][0])
 
-    # updateFinancialInstrumentsTable()
+    updateFinancialInstrumentsTable()
 
     matrix(userid, risk_level, capital) #insert portfolio into db
+    print ("called matrix")
 
 def matrix(userid, risk_level, capital):
     # self-declared matrix function to suggest a variety of financial plans according to risk level
@@ -128,16 +129,13 @@ def matrix(userid, risk_level, capital):
         sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s and dividend_yield <= %s'
         data = DBconnection(sql_statement, (4, 10))
     elif (risk_level == 'high'):
-        sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s and dividend_yield <= %s'
-        data = DBconnection(sql_statement, (11, 19))
-    else:
         sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s'
-        data = DBconnection(sql_statement, 20)
+        data = DBconnection(sql_statement, 11)
 
     sorted_dividends = sorted(data, key=lambda dividend: dividend[2], reverse=True) 
     chosen_stocks = sorted_dividends[:num_instruments] #sieve out appropriate number of financial instruments
     sql_run = []
-
+    print(f'sorted_dividends = {sorted_dividends}')
     portfolioid = None
 
     check_if_user_exists_statement = "SELECT * from portfolio where userid = %s ORDER BY portfolioid DESC"
@@ -149,11 +147,12 @@ def matrix(userid, risk_level, capital):
     else:
         portfolioid = 1
 
-
+    print(f'portfolioid is {portfolioid}')
     usable_capital = capital/2
     first_stock_allocated = False
     second_usable_capital = usable_capital / (num_instruments - 1)
     counter = 0
+    print(f'chosen_stocks is {chosen_stocks}')
     for stock_details in chosen_stocks:
         counter += 1
         symbol = stock_details[0]
@@ -164,10 +163,11 @@ def matrix(userid, risk_level, capital):
             first_stock_allocated = True
         else:
             lot_size = (second_usable_capital // purchase_price)
-
+        print(f'lotsize is {lot_size}')
         insert_into_portfolio = "INSERT INTO portfolio (userid, portfolioid, symbol, purchase_price, lot_size) VALUES(%s, %s, %s, %s, %s)"
         sql_run = (userid, portfolioid, symbol, purchase_price, lot_size)
         DBconnection(insert_into_portfolio, sql_run)
+        print("inserted into portfolio")
 
 def questionaire(userid):
     risk_level = ''
