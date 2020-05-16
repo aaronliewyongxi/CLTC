@@ -89,7 +89,7 @@ def send_invest(message):
     userid = message.chat.id
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
-    bot.reply_to(message, "Your current capital investment is " + conn + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+    bot.reply_to(message, "Your current capital investment is " + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
 #'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
 def findCapital(msg):
     for word in msg:
