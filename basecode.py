@@ -10,7 +10,6 @@ import os
 import json
 import calendar
 import pymysql.cursors
-import yfinance as yf
 import re
  
 with open('bottoken.txt','r') as tokenFile:
