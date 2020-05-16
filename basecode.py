@@ -10,11 +10,13 @@ import os
 import json
 import calendar
 import pymysql.cursors
-import re
+# import yfinance as yf
+
  
-with open('bottoken.txt','r') as tokenFile:
-    bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = bot_token)
+# with open('bottoken.txt','r') as tokenFile:
+#     bot_token = tokenFile.read()
+# bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
+bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
@@ -32,21 +34,114 @@ def DBconnection(sql_statement, data):
             data.append(row)
         return data
 
-def matrix(risk_level, capital):
-    # self-declared matrix function to suggest a variety of financial plans according to risk level
-
-    financial_instruments = []
-    sql_statement = ''
-    total_value = 0
-    if(capital < 10000 & risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = %r']
-        conn = "low"
-        data = DBconnection(sql_statement, conn)
-        financial_instruments = [data[0]]
-        total_value = [data[1]]
+# def insert_DBconnection(sql_statement):
+#     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
+    
+#     with conn:
+#         cur = conn.cursor()
+#         cur.execute(sql_statement)
         
-    return financial_instruments
- 
+#         rows = cur.fetchall()
+#         # print(rows)
+#         data = []
+#         for row in rows:
+#             data.append(row)
+#         return data
+
+# insert_DBconnection("INSERT INTO financial_instruments (symbol, unit_price, risk_level) VALUES('SXL', 520, 'low')")
+
+
+#   /matrix
+@bot.message_handler(commands=['matrix'])
+def call_matrix(message):
+    # fetch from db the risk_level of userid (message.chat.id) based on latest attempt
+    userid = message.chat.id
+    select_risk_level = "select risk_level from questionnaire where attempt = (select max(attempt) from questionnaire where userid = %s)"
+    sql_run = userid
+    risk_level = DBconnection(select_risk_level,sql_run)
+    
+    select_capital = "Select capital from telegramusers where userid = %r"
+    capital = DBconnection(select_capital,userid)
+
+    matrix(userid, risk_level, capital) #insert portfolio into db
+
+def matrix(userid, risk_level, capital):
+    # self-declared matrix function to suggest a variety of financial plans according to risk level
+    # db risk_level = low, moderate, high, very high
+    num_instruments = 0
+    instruments_allocation = {    
+                                10000: 4,
+                                20000: 5,
+                                49999: 7,
+                                99999: 14,
+                                100000: 17
+    }
+    if capital > 100000:
+        num_instruments = instruments_allocation[100000]
+    else:
+        for key, value in instruments_allocation.items():
+            if capital <= key:
+                num_instruments = value
+
+    # data is [ ('ABC', Decimal('5'), 3),
+    #           ('SXL', Decimal('520'), 5), 
+    #           ('XYZ', Decimal('2'), 11) ]
+    
+    # low dividend yield <= 3%
+    # moderate dividend yield = 4% - 10%
+    # high dividend yield >= 11% 
+
+    if (risk_level == 'low'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield <= %s'
+        data = DBconnection(sql_statement, 3)
+    elif (risk_level == 'moderate'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s and dividend_yield <= %s'
+        data = DBconnection(sql_statement, (4, 10))
+    elif (risk_level == 'high'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s'
+        data = DBconnection(sql_statement, 11)
+
+    # now i need to sort the instruments into highest dividend yield to lowest dividend yield
+    sorted_dividends = sorted(data, key=lambda dividend: dividend[2], reverse=True) 
+    chosen_stocks = sorted_dividends[:num_instruments] #sieve out appropriate number of financial instruments
+
+    sql_run = []
+    # userid = 358771567
+    portfolioid = None
+
+    check_if_user_exists_statement = "SELECT * from portfolio where userid = %s ORDER BY portfolioid DESC"
+    sql_run = userid
+    result = DBconnection(check_if_user_exists_statement,sql_run)
+
+    if result:
+        portfolioid = result[0][1] + 1
+    else:
+        portfolioid = 1
+
+    # allocate half of capital to top dividend yield stock
+    # remaining half, split equally between remaining financial instruments
+    usable_capital = capital/2
+    first_stock_allocated = False
+    for stock_details in chosen_stocks:
+        symbol = stock_details[0]
+        purchase_price = stock_details[1][0]
+
+        if first_stock_allocated == False:
+            lot_size = (usable_capital // purchase_price)
+            first_stock_allocated = True
+        else:
+            usable_capital /= (num_instruments - 1)
+            lot_size = (usable_capital // purchase_price)
+
+        insert_into_portfolio = "INSERT INTO portfolio (userid, portfolioid, symbol, purchase_price, lot_size) VALUES(%s, %s, %s)"
+        sql_run = (userid, portfolioid, symbol, purchase_price, lot_size)
+        DBconnection(insert_into_portfolio, sql_run)
+
+    # percentage = forward_dividend_yield / current_share_price
+
+# matrix('low', 25000)
+
+
 def questionaire(userid):
     risk_level = ''
     sql_statement = "SELECT * from telegramusers where userid = %s"
@@ -219,7 +314,29 @@ def send_invest(message):
     userid = message.chat.id
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
-    bot.reply_to(message, "Your current capital investment is " + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+    bot.reply_to(message, "Your current capital investment is $" + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+
+@bot.message_handler(content_types=['text'])
+def setCapital(message):
+    userid = message.chat.id
+    sql_statement = ""
+    msg = message.text.lower()
+    msg = msg.strip()
+    if (msg[:6] == 'invest'):
+        amount = msg[6:].strip()
+        if (amount.isdigit() == False):
+            bot.send_message(userid, "Please make sure your investment value consists of only digits.")
+        else:
+            amount = float(amount)
+            sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
+            sql_run = (amount, userid)
+            DBconnection(sql_statement, sql_run)
+            bot.send_message(userid, "Your investment value has been demarcated.")
+
+
+#'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
 def findCapital(msg):
     for word in msg:
         if '$' in msg:
@@ -237,6 +354,7 @@ def getCapital(message):
     
     bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
 
+    
 @bot.message_handler(commands=['viewproposedproducts'])
 def send_proposed(message):
     userid = message.chat.id
