@@ -10,14 +10,14 @@ import os
 import json
 import calendar
 import pymysql.cursors
-
-import re
 from PyPDF2 import PdfFileReader
 import pandas as pd
 import matplotlib
 from pylab import title, figure, xlabel, ylabel, xticks, bar, legend, axis, savefig
 from fpdf import FPDF
- 
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.pyplot as plt
+import random
 with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
@@ -98,10 +98,14 @@ def send_report(message):
     sql_statement = "Select * from portfolio where userid = %s"
     check = DBconnection(sql_statement,userid)
     if check:
+        getReport = generatePDF(userid)
+        bot.reply_to(message,"Here is a detailed analysis and suggested financial instruments for you, " + message.chat.first_name)
         doc = open(str(userid) +'.pdf','rb')
         bot.send_document(userid,doc)
         bot.send_document(userid, "FILEID")
-
+    else:
+        bot.reply_to("Im sorry, " + message.chat.first_name + "you do not satisfy the requirements for a detailed report yet.")
+        
 #############################################################################################################################################
 
 @bot.message_handler(commands=['begin'])
@@ -256,57 +260,48 @@ def getCapital(message):
 
 
 def generatePDF(userid):
-    df = pd.DataFrame()
     sql_statement = "SELECT symbol, purchase_price, lot_size from portfolio where userid = %s"
     data = userid
     connection = DBconnection(sql_statement,data)
     print(connection)
     size_of_df = len(connection)
-    print(size_of_df)
-
-    df['Symbol'] = [connection[0][0],connection[0][1]]
-    df['Purchase Price'] = [connection[0][1], connection[1][1]]
-    df['Lot Size'] = [connection[0][2], connection[1][2]]
-
-    title("Personalized Portfolio Analysis for" + str(userid))
-    xlabel("Expected Growth Over One Year")
-    ylabel("Predicted Stock Price")
-
-    total_range = [2,4,6,8,10]
-    m = [x - 0.5 for x in total_range]
-
-    xticks(m, df['Symbol'])
-
-    bar(m, df['Purchase Price'], width=0.5, color="#91eb87", label="Purchase Price")
-    bar(total_range, df['Lot Size'], width=0.5, color="#eb879c", label="Lot Size")
-
-    legend()
-    axis([0, 10, 0, 8])
-    savefig('barchart.png')
+    Symbol = [i[0] for i in connection]
+    PurchasePrice = [i[1] for i in connection]
+    Lot_Size = [i[2] for i in connection]
 
     pdf = FPDF()
+
+#header of the pdf file
+    header = 'Specifically curated for ' + str(userid)
     pdf.add_page()
-    pdf.set_xy(0, 0)
-    pdf.set_font('arial', 'B', 12)
-    pdf.cell(60)
-    pdf.cell(75, 10, "A Sample Analysis of return on investment for " + str(userid), 0, 2, 'C')
-    pdf.cell(90, 10, " ", 0, 2, 'C')
-    pdf.cell(-40)
-    pdf.cell(50, 10, 'Symbol', 1, 0, 'C')
-    pdf.cell(40, 10, 'Purchase Price', 1, 0, 'C')
-    pdf.cell(40, 10, 'Lot Size', 1, 2, 'C')
-    pdf.cell(-90)
-    pdf.set_font('arial', '', 12)
-    for i in range(0, len(df)):
-        pdf.cell(50, 10, '%s' % (df['Symbol'].iloc[i]), 1, 0, 'C')
-        pdf.cell(40, 10, '%s' % (str(df.LotSize.iloc[i])), 1, 0, 'C')
-        pdf.cell(40, 10, '%s' % (str(df.Purchase_price.iloc[i])), 1, 2, 'C')
-        pdf.cell(-90)
-    pdf.cell(90, 10, " ", 0, 2, 'C')
-    pdf.cell(-30)
-    pdf.image('barchart.png', x = None, y = None, w = 0, h = 0, type = '', link = '')
-    pdf.output(str(userid) + '.pdf', 'F')
-    
+    pdf.set_font('Arial', 'B', 16)
+    w = pdf.get_string_width(header) + 6
+    pdf.set_x((210 - w) / 2)
+    pdf.cell(w, 9, header, 0, 0, 'C')
+    pdf.line(20, 18, 210-20, 18)
+
+    pdf.ln(10)
+    pdf.set_font('Times', '', 12)
+    pdf.multi_cell(0, 5, 'Here is a list of suggested financial instruments for your peruse.')
+
+    for i in range(len(Symbol)):
+        pdf.ln()
+        pdf.set_font('Arial', '', 12)
+        pdf.set_fill_color(200, 220, 255)
+        pdf.cell(0, 6, 'Financial Instrument ' + str(i+1) + ": " + str(Symbol[i]) + " Unit Price " + str(PurchasePrice[i]) + " Lot Size " + str(Lot_Size[i]), 0 , 1, 'L', 1)
+
+        pdf.ln()
+        pdf.set_font('Courier', 'B', 12)
+        pdf.multi_cell(0, 5, 'A detailed analysis on' + Symbol[i] + '---------------')
+        
+
+    #pdf.set_y(0) #on top of the page
+    pdf.set_y(-30) #30 CM from the bottom of the page
+    pdf.set_font('Arial', '', 8)
+    pdf.set_text_color(0)
+    pdf.cell(0, 5, 'Page ' + str(pdf.page_no()), 0, 0, 'C')
+
+    pdf.output(str(userid) +'.pdf', 'F')
     return pdf
 
 @bot.message_handler(commands=['viewproposedproducts'])
