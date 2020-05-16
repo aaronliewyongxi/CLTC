@@ -12,8 +12,6 @@ import requests
 import telebot
 # from fpdf import FPDF
 from telegram.ext import CommandHandler, Filters, MessageHandler, updater
-
-# import yfinance as yf
 import ast
 
  
@@ -22,8 +20,6 @@ import ast
 # bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
 bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
-#Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
-#Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement, data):
     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
     
@@ -32,7 +28,7 @@ def DBconnection(sql_statement, data):
         cur.execute(sql_statement, data)
         
         rows = cur.fetchall()
-        # print(rows)
+
         data = []
         for row in rows:
             data.append(row)
@@ -46,13 +42,13 @@ def DBconnection2(sql_statement):
         cur.execute(sql_statement)
         
         rows = cur.fetchall()
-        # print(rows)
+
         data = []
         for row in rows:
             data.append(row)
         return data
 
-# insert_DBconnection("INSERT INTO financial_instruments (symbol, unit_price, risk_level) VALUES('SXL', 520, 'low')")
+
 
 def updateFinancialInstrumentsTable():
     dropIfExists = "DROP TABLE IF EXISTS financial_instruments"
@@ -88,10 +84,10 @@ def updateFinancialInstrumentsTable():
         sql_run = (stockId, stockPrice, divYield)
         DBconnection(statement, sql_run)
 
-#   /matrix
+
 @bot.message_handler(commands=['matrix'])
 def call_matrix(message):
-    # fetch from db the risk_level of userid (message.chat.id) based on latest attempt
+
     userid = message.chat.id
     select_risk_level = "select risk_level from questionnaire where attempt = (select max(attempt) from questionnaire where userid = %s)  and userid = %s"
     sql_run = (userid, userid)
@@ -113,12 +109,11 @@ def call_matrix(message):
         
     updateFinancialInstrumentsTable()
 
-    matrix(userid, risk_level, capital) #insert portfolio into db
-    print ("called matrix")
+    matrix(userid, risk_level, capital) 
+
 
 def matrix(userid, risk_level, capital):
-    # self-declared matrix function to suggest a variety of financial plans according to risk level
-    # db risk_level = low, moderate, high, very high
+
     num_instruments = 0
 
     if capital <= 10000:
