@@ -125,6 +125,3 @@ def iterate_stocks(list_of_stocks):
             else:
                 rtnstr += "'" + str(error_stocks[x]) + "'" + ", "
         return "There is(are) no stock named: " + rtnstr + "."
-
-
-iterate_stocks(['U11.SI', 'C6L.SI', 'C31.SI'])
