@@ -1,26 +1,25 @@
-from uuid import uuid4
-from telegram.ext import updater, CommandHandler, MessageHandler, Filters
-import telebot
-import time as t
-import datetime
-import random
-import urllib
-import requests
-import os
-import json
 import calendar
-import pymysql.cursors
-from PyPDF2 import PdfFileReader
-import pandas as pd
-import matplotlib
-from pylab import title, figure, xlabel, ylabel, xticks, bar, legend, axis, savefig
-from fpdf import FPDF
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.pyplot as plt
+import datetime
+import json
+import os
 import random
-with open('bottoken.txt','r') as tokenFile:
-    bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = bot_token)
+import time as t
+import urllib
+from uuid import uuid4
+
+import pymysql.cursors
+import requests
+import telebot
+from fpdf import FPDF
+from telegram.ext import CommandHandler, Filters, MessageHandler, updater
+
+# import yfinance as yf
+
+ 
+# with open('bottoken.txt','r') as tokenFile:
+#     bot_token = tokenFile.read()
+# bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
+bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
@@ -38,21 +37,114 @@ def DBconnection(sql_statement, data):
             data.append(row)
         return data
 
-def matrix(risk_level, capital):
-    # self-declared matrix function to suggest a variety of financial plans according to risk level
-
-    financial_instruments = []
-    sql_statement = ''
-    total_value = 0
-    if(capital < 10000 & risk_level == 'low'):
-        sql_statement = ['select financial_plans, total_value from plans where risk_level = %r']
-        conn = "low"
-        data = DBconnection(sql_statement, conn)
-        financial_instruments = [data[0]]
-        total_value = [data[1]]
+# def insert_DBconnection(sql_statement):
+#     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
+    
+#     with conn:
+#         cur = conn.cursor()
+#         cur.execute(sql_statement)
         
-    return financial_instruments
- 
+#         rows = cur.fetchall()
+#         # print(rows)
+#         data = []
+#         for row in rows:
+#             data.append(row)
+#         return data
+
+# insert_DBconnection("INSERT INTO financial_instruments (symbol, unit_price, risk_level) VALUES('SXL', 520, 'low')")
+
+
+#   /matrix
+@bot.message_handler(commands=['matrix'])
+def call_matrix(message):
+    # fetch from db the risk_level of userid (message.chat.id) based on latest attempt
+    userid = message.chat.id
+    select_risk_level = "select risk_level from questionnaire where attempt = (select max(attempt) from questionnaire where userid = %s)"
+    sql_run = userid
+    risk_level = DBconnection(select_risk_level,sql_run)
+    
+    select_capital = "Select capital from telegramusers where userid = %r"
+    capital = DBconnection(select_capital,userid)
+
+    matrix(userid, risk_level, capital) #insert portfolio into db
+
+def matrix(userid, risk_level, capital):
+    # self-declared matrix function to suggest a variety of financial plans according to risk level
+    # db risk_level = low, moderate, high, very high
+    num_instruments = 0
+    instruments_allocation = {    
+                                10000: 4,
+                                20000: 5,
+                                49999: 7,
+                                99999: 14,
+                                100000: 17
+    }
+    if capital > 100000:
+        num_instruments = instruments_allocation[100000]
+    else:
+        for key, value in instruments_allocation.items():
+            if capital <= key:
+                num_instruments = value
+
+    # data is [ ('ABC', Decimal('5'), 3),
+    #           ('SXL', Decimal('520'), 5), 
+    #           ('XYZ', Decimal('2'), 11) ]
+    
+    # low dividend yield <= 3%
+    # moderate dividend yield = 4% - 10%
+    # high dividend yield >= 11% 
+
+    if (risk_level == 'low'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield <= %s'
+        data = DBconnection(sql_statement, 3)
+    elif (risk_level == 'moderate'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s and dividend_yield <= %s'
+        data = DBconnection(sql_statement, (4, 10))
+    elif (risk_level == 'high'):
+        sql_statement = 'SELECT * from financial_instruments where dividend_yield >= %s'
+        data = DBconnection(sql_statement, 11)
+
+    # now i need to sort the instruments into highest dividend yield to lowest dividend yield
+    sorted_dividends = sorted(data, key=lambda dividend: dividend[2], reverse=True) 
+    chosen_stocks = sorted_dividends[:num_instruments] #sieve out appropriate number of financial instruments
+
+    sql_run = []
+    # userid = 358771567
+    portfolioid = None
+
+    check_if_user_exists_statement = "SELECT * from portfolio where userid = %s ORDER BY portfolioid DESC"
+    sql_run = userid
+    result = DBconnection(check_if_user_exists_statement,sql_run)
+
+    if result:
+        portfolioid = result[0][1] + 1
+    else:
+        portfolioid = 1
+
+    # allocate half of capital to top dividend yield stock
+    # remaining half, split equally between remaining financial instruments
+    usable_capital = capital/2
+    first_stock_allocated = False
+    for stock_details in chosen_stocks:
+        symbol = stock_details[0]
+        purchase_price = stock_details[1][0]
+
+        if first_stock_allocated == False:
+            lot_size = (usable_capital // purchase_price)
+            first_stock_allocated = True
+        else:
+            usable_capital /= (num_instruments - 1)
+            lot_size = (usable_capital // purchase_price)
+
+        insert_into_portfolio = "INSERT INTO portfolio (userid, portfolioid, symbol, purchase_price, lot_size) VALUES(%s, %s, %s)"
+        sql_run = (userid, portfolioid, symbol, purchase_price, lot_size)
+        DBconnection(insert_into_portfolio, sql_run)
+
+    # percentage = forward_dividend_yield / current_share_price
+
+# matrix('low', 25000)
+
+
 def questionaire(userid):
     risk_level = ''
     sql_statement = "SELECT * from telegramusers where userid = %s"
@@ -97,30 +189,51 @@ def send_report(message):
     userid = message.chat.id
     sql_statement = "Select * from portfolio where userid = %s"
     check = DBconnection(sql_statement,userid)
+    print(check + "THIS IS CHECK")
     if check:
-        getReport = generatePDF(userid)
+        generatePDF(userid)
         bot.reply_to(message,"Here is a detailed analysis and suggested financial instruments for you, " + message.chat.first_name)
         doc = open(str(userid) +'.pdf','rb')
         bot.send_document(userid,doc)
         bot.send_document(userid, "FILEID")
     else:
-        bot.reply_to("Im sorry, " + message.chat.first_name + "you do not satisfy the requirements for a detailed report yet.")
+        print("not check")
+        bot.reply_to(message,"Im sorry, " + message.chat.first_name + "you do not satisfy the requirements for a detailed report yet.")
         
 #############################################################################################################################################
 
+
 @bot.message_handler(commands=['begin'])
-def questionaire_1(message):
+def questionnaire_1(message):
+    #insert ID into database
+    userid = message.chat.id
+    sql_run= userid
 
-    option1={'Always stop at yellow no matter what.':1,'Break and stop at the light. You’re late anyway, right?':2,'You blow through that sucker!':3}
+    if_attempt_exist_statment= 'select attempt from questionnaire where userid=%s'
 
-    keyboard = telebot.types.InlineKeyboardMarkup()
+    if DBconnection(if_attempt_exist_statment,sql_run):
+        attempt= DBconnection(if_attempt_exist_statment,sql_run)
+        num_attempt= int(attempt[-1][0])
+        new_attempt= num_attempt+1
+        sql_run= (new_attempt, userid)
+        sql_statement = "Insert into questionnaire (attempt,userid) values(%s,%s)"
+        DBconnection(sql_statement,sql_run)
+
+    else:
+        sql_run= (1, userid)
+        sql_statement = "Insert into questionnaire (attempt,userid) values(%s,%s)"
+        DBconnection(sql_statement,sql_run)
+
+    option1={'Always stop at yellow no matter what.':11,'Break and stop at the light. You’re late anyway, right?':21,'You blow through that sucker!':31}
+
+    keyboard = telebot.types.InlineKeyboardMarkup() 
     for key in option1:
         keyboard.add(
             telebot.types.InlineKeyboardButton(
                 key, callback_data= option1[key]
             )
         )
-        
+
     bot.send_message(
     message.chat.id,
     'You are driving to meet some friends. You’re running late. The traffic light ahead turns yellow. What will you do?' + 
@@ -129,38 +242,12 @@ def questionaire_1(message):
     )
 
 
-@bot.callback_query_handler(func=lambda call: True)
-def iq_callback(query, score=[]):
-    data = query.data
-    int_data=int(data)
-    score += [int_data]
-    print(score)
-
-    if len(score)==4:
-        total= sum(score)
-        if total== 4:
-            risk_level= "low"
-        elif total<=6:
-            risk_level='moderate'
-        elif total<=8:
-            risk_level='High'
-        else:
-            risk_level='Very High'
-
-        return risk_level
-
-    elif len(score)>4:
-        score=[]
-        print(score)
-        print("hello")
-    
-    
 
 
 @bot.message_handler(commands=['Q2'])
-def questionaire_2(message):
+def questionnaire_2(message):
 
-    option1={'Hear this stuff all the time, know it’s not true and ignore her.':1,'Nod, squint your eyes, log onto E*Trade and invest a grand.':2,'Take 5k of that money you had for a rainy day and invest.':3}
+    option1={'Hear this stuff all the time, know it’s not true and ignore her.':12,'Nod, squint your eyes, log onto E*Trade and invest a grand.':22,'Take 5k of that money you had for a rainy day and invest.':32}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -178,13 +265,15 @@ def questionaire_2(message):
     )
 
 
+
+    
     
 @bot.message_handler(commands=['Q3'])
-def questionaire_3(message):
+def questionnaire_3(message):
 
-    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':1,
-    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':2,
-    'Immediately excuse yourself and head across the room.':3}
+    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':13,
+    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':23,
+    'Immediately excuse yourself and head across the room.':33}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -203,10 +292,10 @@ def questionaire_3(message):
 
     
 @bot.message_handler(commands=['Q4'])
-def questionaire_4(message):
+def questionnaire_4(message):
 
-    option1={'Put your head down in shame.':1,'Chuckle with most of the crowd.':2,
-    'Realize this is your time to shine and head up to the front.':3}
+    option1={'Put your head down in shame.':14,'Chuckle with most of the crowd.':24,
+    'Realize this is your time to shine and head up to the front.':34}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -220,13 +309,140 @@ def questionaire_4(message):
     message.chat.id,
     'It’s the dreaded annual company Christmas party.'+
     'The COO is a little enebriated and asks if anyone else would like to get up to attest to the company’s good fortune. What will you do?'+
+    "Next Question: /Q5",
+    reply_markup=keyboard
+    )
+
+    
+@bot.message_handler(commands=['Q5'])
+def questionnaire_5(message):
+
+    option1={'Leave':15,'Stick around to see the free show.':25,
+    'Exclaim, “Heck, I’ve got ten bucks!” And get in line.':35}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’re with a friend in Thailand. You walk into this interesting tent. In the center is a cobra in a cage. People are queued up to pay ten dollars for a chance to grab the five one-hundred dollar bills on top of the snake's cage. You:"+
+    "Next Question: /Q6",
+    reply_markup=keyboard
+    )
+
+
+
+@bot.message_handler(commands=['Q6'])
+def questionnaire_6(message):
+
+    option1={'Thank him politely and inside your head you can’t wait for the plane to land.':16,
+    'C Give him your business card and ask for his, knowing full well this guy is full of crap.':26,
+    'You try to find a polite way to tell him his body odor offends.':36}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’re sitting next to this old man on the airplane. It’s obvious he hasn’t showered and he sleeps through the beverage service. When he wakes up he starts talking to you, his ramblings culminate with him explaining how he can help your business. What will you do?"+
+    "Next Question: /Q7",
+    reply_markup=keyboard
+    )
+
+
+@bot.message_handler(commands=['Q7'])
+def questionnaire_7(message):
+
+    option1={'Decide it’s better to wait until you have more of a cushion.':17,
+    'Buy the property and hope for the best.':27,
+    'Are so convinced the deal is so good, you buy two. The other with money from a 2nd mortgage on your home.':37}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’ve spent time researching the perfect part of town to buy a rental property. You think you have all your bases covered, but investing in this property will definitely put you and your family out there. What will you do?"+
+    "Next Question: /Q8",
+    reply_markup=keyboard
+    )
+
+@bot.message_handler(commands=['Q8'])
+def questionnaire_8(message):
+
+    option1={'Tell your friends you’ll greet them when they get back.':18,
+    'Go to the front desk and hire a car and recommendations on the best places to drink in town.':28,
+    'Are the first one tethered to the cord.':38}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "Today is your birthday and you are on vacation in the Bahamas to celebrate. Everyone has been drinking and the gang decides it’s the perfect time to rent mopeds from the front desk and go bungee jumping. What will you do?"+
     "To view results: /results",
     reply_markup=keyboard
     )
 
+
+@bot.callback_query_handler(func=lambda call: True)
+def iq_callback(query):
+    userid = query.from_user.id
+
+    data = query.data
+    question= 'Qn'+ str(data[-1])
+    sql_run = (data[0], userid)
+    sql_statement= "update questionnaire set " + question + "= %s where userid=%s and " + question+ " is null;"
+    DBconnection(sql_statement,sql_run)
+
+
+
 @bot.message_handler(commands=['results'])
 def results(message):
-    bot.reply_to(message, "Base on the questionnaire you are a __<need to extract the risk level>__ risk taker. Please input your desired amount for investment under /invest")
+    userid = message.chat.id
+    sql_run= userid
+    sql_statement= "select qn1+qn2+qn3+qn4+qn5+qn6+qn7+qn8 from questionnaire, (select max(time_completed) as t from questionnaire where userid= %s) as temp where time_completed=temp.t;"
+    total_number_tuple=DBconnection(sql_statement,sql_run)
+    total_number= total_number_tuple[0][0]
+    
+
+    if total_number<=10:
+        risk_level= "low"
+    elif total_number<=13:
+        risk_level="moderate"
+    elif total_number<=16:
+        risk_level="high"
+    else:
+        risk_level="very high"
+    
+
+    sql_run=(risk_level,userid)
+    sql_statement_risk= "update questionnaire set risk_level = %s where userid= %s and risk_level is null;"
+
+    DBconnection(sql_statement_risk,sql_run)
+
+    bot.reply_to(message, "Base on the questionnire you are a "+ risk_level + "risk taker. Please input your desired amount for investment under /invest")
+
 
 
 
@@ -239,7 +455,29 @@ def send_invest(message):
     userid = message.chat.id
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
-    bot.reply_to(message, "Your current capital investment is " + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+    bot.reply_to(message, "Your current capital investment is $" + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+
+
+@bot.message_handler(content_types=['text'])
+def setCapital(message):
+    userid = message.chat.id
+    sql_statement = ""
+    msg = message.text.lower()
+    msg = msg.strip()
+    if (msg[:6] == 'invest'):
+        amount = msg[6:].strip()
+        if (amount.isdigit() == False):
+            bot.send_message(userid, "Please make sure your investment value consists of only digits.")
+        else:
+            amount = float(amount)
+            sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
+            sql_run = (amount, userid)
+            DBconnection(sql_statement, sql_run)
+            bot.send_message(userid, "Your investment value has been demarcated.")
+
+
+#'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
 def findCapital(msg):
     for word in msg:
         if '$' in msg:
@@ -263,8 +501,6 @@ def generatePDF(userid):
     sql_statement = "SELECT symbol, purchase_price, lot_size from portfolio where userid = %s"
     data = userid
     connection = DBconnection(sql_statement,data)
-    print(connection)
-    size_of_df = len(connection)
     Symbol = [i[0] for i in connection]
     PurchasePrice = [i[1] for i in connection]
     Lot_Size = [i[2] for i in connection]
