@@ -10,8 +10,13 @@ import os
 import json
 import calendar
 import pymysql.cursors
-import yfinance as yf
+
 import re
+from PyPDF2 import PdfFileReader
+import pandas as pd
+import matplotlib
+from pylab import title, figure, xlabel, ylabel, xticks, bar, legend, axis, savefig
+from fpdf import FPDF
  
 with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
@@ -86,6 +91,16 @@ def send_welcome(message):
 def send_information(message):
     bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments after your risk appetite has been determined and your current investment has been captured.")
 
+
+@bot.message_handler(commands=['report'])
+def send_report(message):
+    userid = message.chat.id
+    sql_statement = "Select * from portfolio where userid = %s"
+    check = DBconnection(sql_statement,userid)
+    if check:
+        doc = open(str(userid) +'.pdf','rb')
+        bot.send_document(userid,doc)
+        bot.send_document(userid, "FILEID")
 
 #############################################################################################################################################
 
@@ -237,6 +252,62 @@ def getCapital(message):
     conn = DBconnection(sql_statement,data)
     
     bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
+
+
+
+def generatePDF(userid):
+    df = pd.DataFrame()
+    sql_statement = "SELECT symbol, purchase_price, lot_size from portfolio where userid = %s"
+    data = userid
+    connection = DBconnection(sql_statement,data)
+    print(connection)
+    size_of_df = len(connection)
+    print(size_of_df)
+
+    df['Symbol'] = [connection[0][0],connection[0][1]]
+    df['Purchase Price'] = [connection[0][1], connection[1][1]]
+    df['Lot Size'] = [connection[0][2], connection[1][2]]
+
+    title("Personalized Portfolio Analysis for" + str(userid))
+    xlabel("Expected Growth Over One Year")
+    ylabel("Predicted Stock Price")
+
+    total_range = [2,4,6,8,10]
+    m = [x - 0.5 for x in total_range]
+
+    xticks(m, df['Symbol'])
+
+    bar(m, df['Purchase Price'], width=0.5, color="#91eb87", label="Purchase Price")
+    bar(total_range, df['Lot Size'], width=0.5, color="#eb879c", label="Lot Size")
+
+    legend()
+    axis([0, 10, 0, 8])
+    savefig('barchart.png')
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_xy(0, 0)
+    pdf.set_font('arial', 'B', 12)
+    pdf.cell(60)
+    pdf.cell(75, 10, "A Sample Analysis of return on investment for " + str(userid), 0, 2, 'C')
+    pdf.cell(90, 10, " ", 0, 2, 'C')
+    pdf.cell(-40)
+    pdf.cell(50, 10, 'Symbol', 1, 0, 'C')
+    pdf.cell(40, 10, 'Purchase Price', 1, 0, 'C')
+    pdf.cell(40, 10, 'Lot Size', 1, 2, 'C')
+    pdf.cell(-90)
+    pdf.set_font('arial', '', 12)
+    for i in range(0, len(df)):
+        pdf.cell(50, 10, '%s' % (df['Symbol'].iloc[i]), 1, 0, 'C')
+        pdf.cell(40, 10, '%s' % (str(df.LotSize.iloc[i])), 1, 0, 'C')
+        pdf.cell(40, 10, '%s' % (str(df.Purchase_price.iloc[i])), 1, 2, 'C')
+        pdf.cell(-90)
+    pdf.cell(90, 10, " ", 0, 2, 'C')
+    pdf.cell(-30)
+    pdf.image('barchart.png', x = None, y = None, w = 0, h = 0, type = '', link = '')
+    pdf.output(str(userid) + '.pdf', 'F')
+    
+    return pdf
 
 @bot.message_handler(commands=['viewproposedproducts'])
 def send_proposed(message):
