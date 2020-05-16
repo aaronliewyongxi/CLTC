@@ -14,12 +14,13 @@ from fpdf import FPDF
 from telegram.ext import CommandHandler, Filters, MessageHandler, updater
 
 # import yfinance as yf
+import ast
 
  
 # with open('bottoken.txt','r') as tokenFile:
 #     bot_token = tokenFile.read()
-# bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
-bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
+bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
+# bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
@@ -37,22 +38,54 @@ def DBconnection(sql_statement, data):
             data.append(row)
         return data
 
-# def insert_DBconnection(sql_statement):
-#     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
+def DBconnection2(sql_statement):
+    conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
     
-#     with conn:
-#         cur = conn.cursor()
-#         cur.execute(sql_statement)
+    with conn:
+        cur = conn.cursor()
+        cur.execute(sql_statement)
         
-#         rows = cur.fetchall()
-#         # print(rows)
-#         data = []
-#         for row in rows:
-#             data.append(row)
-#         return data
+        rows = cur.fetchall()
+        # print(rows)
+        data = []
+        for row in rows:
+            data.append(row)
+        return data
 
 # insert_DBconnection("INSERT INTO financial_instruments (symbol, unit_price, risk_level) VALUES('SXL', 520, 'low')")
 
+def updateFinancialInstrumentsTable():
+    dropIfExists = "DROP TABLE IF EXISTS financial_instruments"
+    DBconnection2(dropIfExists)
+
+    createTable = "CREATE TABLE financial_instruments (symbol varchar(10), unit_price decimal(10,0), dividend_yield varchar(45), PRIMARY KEY (symbol))"
+    DBconnection2(createTable)
+
+    retrieveFromStockTable = "select * from stock_data"
+    stockDataList = DBconnection2(retrieveFromStockTable)
+    lastData = stockDataList[0][-1]
+    startPos = lastData.find("Forward dividend & yield")
+    lastData = lastData[startPos:]
+    lastData = lastData.split(":")
+    forwardDivYield = lastData[-1].strip("}")
+
+    for stockData in stockDataList:
+        stockId = stockData[0]
+        stockPrice = stockData[2]
+        lastData = stockData[-1]
+        startPos = lastData.find("Forward dividend & yield")
+        lastData = lastData[startPos:]
+        lastData = lastData.split(":")
+        forwardDivYield = lastData[-1].strip("}")
+        forwardDivYield = forwardDivYield.strip()
+        if forwardDivYield != "null":
+            divYield = float(forwardDivYield) / stockPrice
+        else:
+            divYield = 0
+        
+        statement = "INSERT INTO financial_instruments (symbol, unit_price, dividend_yield) VALUES(%s, %s, %s)"
+        sql_run = (stockId, stockPrice, divYield)
+        DBconnection(statement, sql_run)
 
 #   /matrix
 @bot.message_handler(commands=['matrix'])
@@ -65,6 +98,8 @@ def call_matrix(message):
     
     select_capital = "Select capital from telegramusers where userid = %r"
     capital = DBconnection(select_capital,userid)
+
+    updateFinancialInstrumentsTable()
 
     matrix(userid, risk_level, capital) #insert portfolio into db
 
@@ -139,6 +174,7 @@ def matrix(userid, risk_level, capital):
         insert_into_portfolio = "INSERT INTO portfolio (userid, portfolioid, symbol, purchase_price, lot_size) VALUES(%s, %s, %s)"
         sql_run = (userid, portfolioid, symbol, purchase_price, lot_size)
         DBconnection(insert_into_portfolio, sql_run)
+        print("inserted portfolio")
 
     # percentage = forward_dividend_yield / current_share_price
 
