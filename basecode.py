@@ -10,11 +10,13 @@ import os
 import json
 import calendar
 import pymysql.cursors
+import yfinance as yf
+import re
  
 with open('bottoken.txt','r') as tokenFile:
     bot_token = tokenFile.read()
 bot = telebot.TeleBot(token = bot_token)
- 
+
 #Database connection and retrieving it accordingly by SQL_statement, it will then retrieve data in the form of a list
 #Need to connect to cloud first -> because right now using localDB -> Inflexible
 def DBconnection(sql_statement, data):
@@ -25,14 +27,15 @@ def DBconnection(sql_statement, data):
         cur.execute(sql_statement, data)
         
         rows = cur.fetchall()
+        print(rows)
         data = []
         for row in rows:
             data.append(row)
         return data
- 
+
 def matrix(risk_level, capital):
-    #self-declared matrix function to suggest a variety of financial plans according to risk level
-    
+    # self-declared matrix function to suggest a variety of financial plans according to risk level
+
     financial_instruments = []
     sql_statement = ''
     total_value = 0
@@ -70,18 +73,146 @@ def send_welcome(message):
     first = DBconnection(first_sql_statement,first_sql_run)
     if first:
         username = message.chat.first_name
-        bot.reply_to(message, 'Welcome back' + str(username) + ' type /information to find out more')
+        bot.reply_to(message, 'Welcome back ' + str(username) + '! type /information to find out more.\nType /commands to see all commands available.')
     else:
         sql_statement = """INSERT INTO telegramusers (userid, risk_level,capital) VALUES(%s,%s,%s)"""
         sql_run = (userid, '', 0)
         data = DBconnection(sql_statement, sql_run)
-        print(data)
+        # print(data)
         bot.reply_to(message, 'Im a Finance Advisor Bot created by Xiuling, Timothy, Aaron & Sean, type /information to find out more.')
         
 
 @bot.message_handler(commands=['information'])
 def send_information(message):
-    bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments")
+    bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments after your risk appetite has been determined and your current investment has been captured.")
+
+
+#############################################################################################################################################
+
+@bot.message_handler(commands=['begin'])
+def questionaire_1(message):
+
+    option1={'Always stop at yellow no matter what.':1,'Break and stop at the light. You’re late anyway, right?':2,'You blow through that sucker!':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'You are driving to meet some friends. You’re running late. The traffic light ahead turns yellow. What will you do?' + 
+    "Next question: /Q2",
+    reply_markup=keyboard
+    )
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def iq_callback(query, score=[]):
+    data = query.data
+    int_data=int(data)
+    score += [int_data]
+    print(score)
+
+    if len(score)==4:
+        total= sum(score)
+        if total== 4:
+            risk_level= "low"
+        elif total<=6:
+            risk_level='moderate'
+        elif total<=8:
+            risk_level='High'
+        else:
+            risk_level='Very High'
+
+        return risk_level
+
+    elif len(score)>4:
+        score=[]
+        print(score)
+        print("hello")
+    
+    
+
+
+@bot.message_handler(commands=['Q2'])
+def questionaire_2(message):
+
+    option1={'Hear this stuff all the time, know it’s not true and ignore her.':1,'Nod, squint your eyes, log onto E*Trade and invest a grand.':2,'Take 5k of that money you had for a rainy day and invest.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'Your friend gives you a tip. She heard this stock is gonna go through the roof in the next week. What is your reaction?'+
+    "Next question: /Q3",
+    reply_markup=keyboard
+    )
+
+
+    
+@bot.message_handler(commands=['Q3'])
+def questionaire_3(message):
+
+    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':1,
+    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':2,
+    'Immediately excuse yourself and head across the room.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'You are a really cool cocktail party. Your spouse is home. You see this seriously smoking hottie across the room. What will you do?'+
+    "Next Question: /Q4",
+    reply_markup=keyboard
+    )
+
+    
+@bot.message_handler(commands=['Q4'])
+def questionaire_4(message):
+
+    option1={'Put your head down in shame.':1,'Chuckle with most of the crowd.':2,
+    'Realize this is your time to shine and head up to the front.':3}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    'It’s the dreaded annual company Christmas party.'+
+    'The COO is a little enebriated and asks if anyone else would like to get up to attest to the company’s good fortune. What will you do?'+
+    "To view results: /results",
+    reply_markup=keyboard
+    )
+
+@bot.message_handler(commands=['results'])
+def results(message):
+    bot.reply_to(message, "Base on the questionnaire you are a __<need to extract the risk level>__ risk taker. Please input your desired amount for investment under /invest")
+
+
+
+############################################################################################################################################
+
 
 
 @bot.message_handler(commands=['invest'])
@@ -90,7 +221,6 @@ def send_invest(message):
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
     bot.reply_to(message, "Your current capital investment is " + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
-#'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
 def findCapital(msg):
     for word in msg:
         if '$' in msg:
@@ -115,6 +245,9 @@ def send_proposed(message):
     retrieved_data = DBconnection(sql_statement,userid)
     print(retrieved_data[0])
 
+@bot.message_handler(commands=['commands'])
+def display_commands(message):
+    bot.reply_to(message, "The possible commands here are:\n /start \n /information \n /invest \n /viewproposedproducts")
     
 while True:
     try:
