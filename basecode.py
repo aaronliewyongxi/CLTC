@@ -96,11 +96,21 @@ def call_matrix(message):
     select_risk_level = "select risk_level from questionnaire where attempt = (select max(attempt) from questionnaire where userid = %s)  and userid = %s"
     sql_run = (userid, userid)
     risk_level = DBconnection(select_risk_level,sql_run)
-    risk_level = risk_level[0][0]
+    if risk_level:
+        risk_level = risk_level[0][0]
+    else:
+        bot.reply_to(message,"Please ensure that you have completed your risk-assessment quiz.\nType /invest to learn more.")
+        return
+
     select_capital = "Select capital from telegramusers where userid = %r"
     capital = DBconnection(select_capital,userid)
-    capital = float(capital[0][0])
+    if capital:
+        capital = float(capital[0][0])
+    else:
+        bot.reply_to(message,"Please ensure that you have stated your investment value.\nType /invest to learn more.")
+        return
 
+        
     updateFinancialInstrumentsTable()
 
     matrix(userid, risk_level, capital) #insert portfolio into db
@@ -133,7 +143,10 @@ def matrix(userid, risk_level, capital):
         data = DBconnection(sql_statement, 11)
 
     sorted_dividends = sorted(data, key=lambda dividend: dividend[2], reverse=True) 
-    chosen_stocks = sorted_dividends[:num_instruments] #sieve out appropriate number of financial instruments
+    chosen_stocks = sorted_dividends[:num_instruments]
+    if len(chosen_stocks) <= 0:
+        bot.send_message(userid, "Sorry. We are unable to find any matching financial instrument for your portfolio.")
+        return 
     sql_run = []
     print(f'sorted_dividends = {sorted_dividends}')
     portfolioid = None
