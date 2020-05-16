@@ -398,6 +398,35 @@ def iq_callback(query):
 
 
 
+@bot.message_handler(commands=['results'])
+def results(message):
+    userid = message.chat.id
+    sql_run= userid
+    sql_statement= "select qn1+qn2+qn3+qn4+qn5+qn6+qn7+qn8 from questionnaire, (select max(time_completed) as t from questionnaire where userid= %s) as temp where time_completed=temp.t;"
+    total_number_tuple=DBconnection(sql_statement,sql_run)
+    total_number= total_number_tuple[0][0]
+    
+
+    if total_number<=10:
+        risk_level= "low"
+    elif total_number<=13:
+        risk_level="moderate"
+    elif total_number<=16:
+        risk_level="high"
+    else:
+        risk_level="very high"
+    
+
+    sql_run=(risk_level,userid)
+    sql_statement_risk= "update questionnaire set risk_level = %s where userid= %s and risk_level is null;"
+
+    DBconnection(sql_statement_risk,sql_run)
+
+    bot.reply_to(message, "Base on the questionnire you are a "+ risk_level + "risk taker. Please input your desired amount for investment under /invest")
+
+
+
+
 ############################################################################################################################################
 
 
