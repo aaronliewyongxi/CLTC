@@ -183,19 +183,38 @@ def send_information(message):
 
 #############################################################################################################################################
 
+
 @bot.message_handler(commands=['begin'])
-def questionaire_1(message):
+def questionnaire_1(message):
+    #insert ID into database
+    userid = message.chat.id
+    sql_run= userid
 
-    option1={'Always stop at yellow no matter what.':1,'Break and stop at the light. You’re late anyway, right?':2,'You blow through that sucker!':3}
+    if_attempt_exist_statment= 'select attempt from questionnaire where userid=%s'
 
-    keyboard = telebot.types.InlineKeyboardMarkup()
+    if DBconnection(if_attempt_exist_statment,sql_run):
+        attempt= DBconnection(if_attempt_exist_statment,sql_run)
+        num_attempt= int(attempt[-1][0])
+        new_attempt= num_attempt+1
+        sql_run= (new_attempt, userid)
+        sql_statement = "Insert into questionnaire (attempt,userid) values(%s,%s)"
+        DBconnection(sql_statement,sql_run)
+
+    else:
+        sql_run= (1, userid)
+        sql_statement = "Insert into questionnaire (attempt,userid) values(%s,%s)"
+        DBconnection(sql_statement,sql_run)
+
+    option1={'Always stop at yellow no matter what.':11,'Break and stop at the light. You’re late anyway, right?':21,'You blow through that sucker!':31}
+
+    keyboard = telebot.types.InlineKeyboardMarkup() 
     for key in option1:
         keyboard.add(
             telebot.types.InlineKeyboardButton(
                 key, callback_data= option1[key]
             )
         )
-        
+
     bot.send_message(
     message.chat.id,
     'You are driving to meet some friends. You’re running late. The traffic light ahead turns yellow. What will you do?' + 
@@ -204,38 +223,12 @@ def questionaire_1(message):
     )
 
 
-@bot.callback_query_handler(func=lambda call: True)
-def iq_callback(query, score=[]):
-    data = query.data
-    int_data=int(data)
-    score += [int_data]
-    print(score)
-
-    if len(score)==4:
-        total= sum(score)
-        if total== 4:
-            risk_level= "low"
-        elif total<=6:
-            risk_level='moderate'
-        elif total<=8:
-            risk_level='High'
-        else:
-            risk_level='Very High'
-
-        return risk_level
-
-    elif len(score)>4:
-        score=[]
-        print(score)
-        print("hello")
-    
-    
 
 
 @bot.message_handler(commands=['Q2'])
-def questionaire_2(message):
+def questionnaire_2(message):
 
-    option1={'Hear this stuff all the time, know it’s not true and ignore her.':1,'Nod, squint your eyes, log onto E*Trade and invest a grand.':2,'Take 5k of that money you had for a rainy day and invest.':3}
+    option1={'Hear this stuff all the time, know it’s not true and ignore her.':12,'Nod, squint your eyes, log onto E*Trade and invest a grand.':22,'Take 5k of that money you had for a rainy day and invest.':32}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -253,13 +246,15 @@ def questionaire_2(message):
     )
 
 
+
+    
     
 @bot.message_handler(commands=['Q3'])
-def questionaire_3(message):
+def questionnaire_3(message):
 
-    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':1,
-    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':2,
-    'Immediately excuse yourself and head across the room.':3}
+    option1={'Look at your wedding ring, order yourself another drink and continue on with your conversation.':13,
+    'Envision a plan where if the stars aligned and you were both at the bar at the same time you would definitely have something to talk about.':23,
+    'Immediately excuse yourself and head across the room.':33}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -278,10 +273,10 @@ def questionaire_3(message):
 
     
 @bot.message_handler(commands=['Q4'])
-def questionaire_4(message):
+def questionnaire_4(message):
 
-    option1={'Put your head down in shame.':1,'Chuckle with most of the crowd.':2,
-    'Realize this is your time to shine and head up to the front.':3}
+    option1={'Put your head down in shame.':14,'Chuckle with most of the crowd.':24,
+    'Realize this is your time to shine and head up to the front.':34}
 
     keyboard = telebot.types.InlineKeyboardMarkup()
     for key in option1:
@@ -295,13 +290,111 @@ def questionaire_4(message):
     message.chat.id,
     'It’s the dreaded annual company Christmas party.'+
     'The COO is a little enebriated and asks if anyone else would like to get up to attest to the company’s good fortune. What will you do?'+
+    "Next Question: /Q5",
+    reply_markup=keyboard
+    )
+
+    
+@bot.message_handler(commands=['Q5'])
+def questionnaire_4(message):
+
+    option1={'Leave':15,'Stick around to see the free show.':25,
+    'Exclaim, “Heck, I’ve got ten bucks!” And get in line.':35}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’re with a friend in Thailand. You walk into this interesting tent. In the center is a cobra in a cage. People are queued up to pay ten dollars for a chance to grab the five one-hundred dollar bills on top of the snake's cage. You:"+
+    "Next Question: /Q6",
+    reply_markup=keyboard
+    )
+
+
+
+@bot.message_handler(commands=['Q6'])
+def questionnaire_4(message):
+
+    option1={'Thank him politely and inside your head you can’t wait for the plane to land.':16,
+    'C Give him your business card and ask for his, knowing full well this guy is full of crap.':26,
+    'You try to find a polite way to tell him his body odor offends.':36}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’re sitting next to this old man on the airplane. It’s obvious he hasn’t showered and he sleeps through the beverage service. When he wakes up he starts talking to you, his ramblings culminate with him explaining how he can help your business. What will you do?"+
+    "Next Question: /Q7",
+    reply_markup=keyboard
+    )
+
+
+@bot.message_handler(commands=['Q7'])
+def questionnaire_4(message):
+
+    option1={'Decide it’s better to wait until you have more of a cushion.':17,
+    'Buy the property and hope for the best.':27,
+    'Are so convinced the deal is so good, you buy two. The other with money from a 2nd mortgage on your home.':37}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "You’ve spent time researching the perfect part of town to buy a rental property. You think you have all your bases covered, but investing in this property will definitely put you and your family out there. What will you do?"+
+    "Next Question: /Q8",
+    reply_markup=keyboard
+    )
+
+@bot.message_handler(commands=['Q8'])
+def questionnaire_4(message):
+
+    option1={'Tell your friends you’ll greet them when they get back.':18,
+    'Go to the front desk and hire a car and recommendations on the best places to drink in town.':28,
+    'Are the first one tethered to the cord.':38}
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for key in option1:
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(
+                key, callback_data= option1[key]
+            )
+        )
+        
+    bot.send_message(
+    message.chat.id,
+    "Today is your birthday and you are on vacation in the Bahamas to celebrate. Everyone has been drinking and the gang decides it’s the perfect time to rent mopeds from the front desk and go bungee jumping. What will you do?"+
     "To view results: /results",
     reply_markup=keyboard
     )
 
-@bot.message_handler(commands=['results'])
-def results(message):
-    bot.reply_to(message, "Base on the questionnaire you are a __<need to extract the risk level>__ risk taker. Please input your desired amount for investment under /invest")
+
+@bot.callback_query_handler(func=lambda call: True)
+def iq_callback(query):
+    userid = query.from_user.id
+
+    data = query.data
+    question= 'Qn'+ str(data[-1])
+    sql_run = (data[0], userid)
+    sql_statement= "update questionnaire set " + question + "= %s where userid=%s and " + question+ " is null;"
+    DBconnection(sql_statement,sql_run)
 
 
 
