@@ -458,14 +458,12 @@ def results(message):
     total_number= total_number_tuple[0][0]
     
 
-    if total_number<=10:
+    if total_number<=12:
         risk_level= "low"
-    elif total_number<=13:
+    elif total_number<=18:
         risk_level="moderate"
-    elif total_number<=16:
-        risk_level="high"
     else:
-        risk_level="very high"
+        risk_level="high"
     
 
     sql_run=(risk_level,userid)
