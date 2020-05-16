@@ -28,6 +28,8 @@ def get_stock_info(stock_id):
     data_arr = []
     try:
         # *Getting current price and changes
+        stock_names = soup.find('h1', class_="D(ib)").text
+        stock_name = stock_names.split(" - ")[1]
         price = soup.find('span', class_="Trsdu(0.3s)").text
         change = soup.find('span', class_="Fw(500)").text
         change = change.split(" ")
@@ -38,6 +40,7 @@ def get_stock_info(stock_id):
         time = time.split(" ")
         current_time = time[3] + " " + time[4].rstrip(".")
 
+        main_dt['Stock Name'] = stock_name
         main_dt['Current Price'] = price
         main_dt['Change'] = change[0]
         main_dt['Relative Change'] = change[1]
@@ -91,27 +94,36 @@ def iterate_stocks(list_of_stocks):
             continue
         else:
             # data cleaning
-            if main_dt['Forward dividend & yield'].split(" ")[0] == "N/A":
+            if (main_dt['PE ratio (TTM)'] == 'N/A' or '∞' in main_dt['PE ratio (TTM)']):
+                main_dt['PE ratio (TTM)'] = 0
+
+            if (main_dt['EPS (TTM)'] == 'N/A' or '∞' in main_dt['EPS (TTM)']):
+                main_dt['EPS (TTM)'] = 0
+
+            if main_dt['Forward dividend & yield'].split(" ")[0] == 'N/A':
                 main_dt['Forward dividend & yield'] = None
             else:
                 main_dt['Forward dividend & yield'] = float(
                     main_dt['Forward dividend & yield'].split(" ")[0])
+
+            if (main_dt['Market cap']) == 'N/A':
+                main_dt['Market cap'] = None
             # data cleaning end
 
             # inserting into database
             if check_for_existing_stock(stock):
-                sql_statement = """UPDATE stock_data SET current_price = %s, 52weekrange = %s, market_cap = %s, pe_ratio = %s,
+                sql_statement = """UPDATE stock_data SET stock_name = %s, current_price = %s, 52weekrange = %s, market_cap = %s, pe_ratio = %s,
                 eps = %s, fdy = %s, last_updated = %s, data_stored = %s where stock_id = %s"""
 
-                sql_run = (float(main_dt['Current Price']), main_dt['52-week range'], main_dt['Market cap'],
+                sql_run = (main_dt['Stock Name'], float(main_dt['Current Price']), main_dt['52-week range'], main_dt['Market cap'],
                            float(main_dt['PE ratio (TTM)']), float(main_dt['EPS (TTM)']), main_dt['Forward dividend & yield'], datetime.datetime.now().strftime(
                     "%Y-%m-%d %H:%M:%S"), json.dumps(main_dt), stock)
 
             else:
-                sql_statement = """INSERT INTO stock_data (stock_id, current_price, 52weekrange, market_cap, pe_ratio,
-                eps, fdy, last_updated, data_stored) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                sql_statement = """INSERT INTO stock_data (stock_id, stock_name current_price, 52weekrange, market_cap, pe_ratio,
+                eps, fdy, last_updated, data_stored) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-                sql_run = (stock, float(main_dt['Current Price']), main_dt['52-week range'], main_dt['Market cap'],
+                sql_run = (stock, main_dt['Stock Name'], float(main_dt['Current Price']), main_dt['52-week range'], main_dt['Market cap'],
                            float(main_dt['PE ratio (TTM)']), float(main_dt['EPS (TTM)']), main_dt['Forward dividend & yield'], datetime.datetime.now().strftime(
                     "%Y-%m-%d %H:%M:%S"), json.dumps(main_dt))
             DBconnection(sql_statement, sql_run)
@@ -125,3 +137,48 @@ def iterate_stocks(list_of_stocks):
             else:
                 rtnstr += "'" + str(error_stocks[x]) + "'" + ", "
         return "There is(are) no stock named: " + rtnstr + "."
+
+
+iterate_stocks([
+    'U11.SI',
+    'BTOU.SI',
+    'GANR.SI',
+    'B69.SI',
+    'BRWY.SI',
+    '5WH.SI',
+    'N4E.SI',
+    'I5H.SI',
+    'WEST.SI',
+    '5EC.SI',
+    'O9E.SI',
+    'CIPH.SI',
+    'F34.SI',
+    'A17U.SI',
+    'C31.SI',
+    'Z74.SI',
+    'BN4.SI',
+    'C09.SI',
+    'C38U.SI',
+    'V03.SI',
+    'Y92.SI',
+    'C61U.SI',
+    'S63.SI',
+    'BS6.SI',
+    'D05.SI',
+    'O39.SI',
+    'G13.SI',
+    'N21U.SI',
+    'U14.SI',
+    'C52.SI',
+    'M44U.SI',
+    'H78.SI',
+    'S68.SI',
+    'T39.SI',
+    'U96.SI',
+    'D01.SI',
+    'C6L.SI',
+    'S58.SI',
+    'J36.SI',
+    'C07.SI',
+    'J37.SI'
+])
