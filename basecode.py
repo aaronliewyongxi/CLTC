@@ -187,18 +187,27 @@ def send_information(message):
 @bot.message_handler(commands=['report'])
 def send_report(message):
     userid = message.chat.id
-    sql_statement = "Select * from portfolio where userid = %s"
+    sql_statement = "Select max(portfolioid) from portfolio where userid = %s"
     check = DBconnection(sql_statement,userid)
-    print(check + "THIS IS CHECK")
-    if check:
+    #print(check[0][0])
+    double_check = "select count from portfolio_link where portfolioid = %s"
+    retrieve_count = DBconnection(double_check,check[0][0])
+    #print(retrieve_count)
+    #print("this is retrieve count")
+
+    if check: #and retrieve_count != 1:
         generatePDF(userid)
         bot.reply_to(message,"Here is a detailed analysis and suggested financial instruments for you, " + message.chat.first_name)
         doc = open(str(userid) +'.pdf','rb')
         bot.send_document(userid,doc)
         bot.send_document(userid, "FILEID")
+      #  sql = "SELECT max(portfolioid) from portfolio where userid = %s"
+       # sqlstatement = """INSERT INTO portfolio_link (portfolioid, pdf_link,count) VALUES(%s,%s,%s)"""
+       # insert_statement = (check[0][0], str(userid) + '.pdf', 1)
+     #   insert = DBconnection(sqlstatement,insert_statement)
     else:
         print("not check")
-        bot.reply_to(message,"Im sorry, " + message.chat.first_name + "you do not satisfy the requirements for a detailed report yet.")
+        bot.reply_to(message,"Im sorry, " + message.chat.first_name + " you do not satisfy the requirements for a detailed report yet.")
         
 #############################################################################################################################################
 
