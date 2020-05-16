@@ -296,7 +296,7 @@ def questionnaire_4(message):
 
     
 @bot.message_handler(commands=['Q5'])
-def questionnaire_4(message):
+def questionnaire_5(message):
 
     option1={'Leave':15,'Stick around to see the free show.':25,
     'Exclaim, “Heck, I’ve got ten bucks!” And get in line.':35}
@@ -319,7 +319,7 @@ def questionnaire_4(message):
 
 
 @bot.message_handler(commands=['Q6'])
-def questionnaire_4(message):
+def questionnaire_6(message):
 
     option1={'Thank him politely and inside your head you can’t wait for the plane to land.':16,
     'C Give him your business card and ask for his, knowing full well this guy is full of crap.':26,
@@ -342,7 +342,7 @@ def questionnaire_4(message):
 
 
 @bot.message_handler(commands=['Q7'])
-def questionnaire_4(message):
+def questionnaire_7(message):
 
     option1={'Decide it’s better to wait until you have more of a cushion.':17,
     'Buy the property and hope for the best.':27,
@@ -364,7 +364,7 @@ def questionnaire_4(message):
     )
 
 @bot.message_handler(commands=['Q8'])
-def questionnaire_4(message):
+def questionnaire_8(message):
 
     option1={'Tell your friends you’ll greet them when they get back.':18,
     'Go to the front desk and hire a car and recommendations on the best places to drink in town.':28,
