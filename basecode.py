@@ -443,6 +443,8 @@ def results(message):
 
     bot.reply_to(message, "Base on the questionnire you are a "+ risk_level + "risk taker. Please input your desired amount for investment under /invest")
 
+    sql_statement= "update telegramusers set risk_level= %s where userid= %s;"
+    DBconnection(sql_statement,sql_run)
 
 
 
