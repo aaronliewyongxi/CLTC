@@ -14,14 +14,9 @@ from fpdf import FPDF
 from telegram.ext import CommandHandler, Filters, MessageHandler, updater
 import ast
 
- 
-# with open('bottoken.txt','r') as tokenFile:
-#     bot_token = tokenFile.read()
-bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
-# bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
 def DBconnection(sql_statement, data):
-    conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
+    conn = None
     
     with conn:
         cur = conn.cursor()
@@ -35,7 +30,7 @@ def DBconnection(sql_statement, data):
         return data
 
 def DBconnection2(sql_statement):
-    conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
+    conn = None
     
     with conn:
         cur = conn.cursor()
