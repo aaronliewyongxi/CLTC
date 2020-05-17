@@ -10,15 +10,15 @@ from uuid import uuid4
 import pymysql.cursors
 import requests
 import telebot
-# from fpdf import FPDF
+from fpdf import FPDF
 from telegram.ext import CommandHandler, Filters, MessageHandler, updater
 import ast
 
  
 # with open('bottoken.txt','r') as tokenFile:
 #     bot_token = tokenFile.read()
-# bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
-bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
+bot = telebot.TeleBot(token = '1148932024:AAESzyLUTt8XBq_RgaNQMMgJuAX63C1YjZw')
+# bot = telebot.TeleBot(token = '1001700627:AAHw7pyoArTRO2V33eQk4u0KsN6Kr8FIe0U')
 
 def DBconnection(sql_statement, data):
     conn = pymysql.connect('database-1.cqifbqu4xgne.ap-southeast-1.rds.amazonaws.com','admin','password','XTASFinanceBot')
@@ -197,7 +197,7 @@ def iterate_stocks(list_of_stocks):
 
 
 
-@bot.message_handler(commands=['matrix'])
+@bot.message_handler(commands=['generateportfolio'])
 def call_matrix(message):
 
     userid = message.chat.id
@@ -289,6 +289,8 @@ def matrix(userid, risk_level, capital):
         DBconnection(insert_into_portfolio, sql_run)
         print("inserted into portfolio")
 
+    bot.send_message(userid, "Your portfolio has been created. Type /report to receive your pdf file.")
+
 def questionaire(userid):
     risk_level = ''
     sql_statement = "SELECT * from telegramusers where userid = %s"
@@ -324,9 +326,12 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['information'])
 def send_information(message):
-    bot.reply_to(message,"type /begin to start your risk level questionaire, /invest to dermarcate the amount you are intending to invest, /view to view various financial instruments after your risk appetite has been determined and your current investment has been captured.")
+    bot.reply_to(message,"type /begin to start your risk level questionaire, \n/invest to dermarcate the amount you are intending to invest, \n/generateportfolio to generate your own portfolio, \n/report to receive a pdf file of suggested financial instruments for you.")
 
-
+@bot.message_handler(commands=['commands'])
+def display_commands(message):
+    bot.reply_to(message, "The possible commands here are:\n /start \n /information \n /invest \n /generateportfolio \n /report")
+    
 @bot.message_handler(commands=['report'])
 def send_report(message):
     userid = message.chat.id
@@ -339,7 +344,8 @@ def send_report(message):
     #print("this is retrieve count")
 
     if check: #and retrieve_count != 1:
-        generatePDF(userid)
+        print("yes")
+        generatePDF(userid, check)
         bot.reply_to(message,"Here is a detailed analysis and suggested financial instruments for you, " + message.chat.first_name)
         doc = open(str(userid) +'.pdf','rb')
         bot.send_document(userid,doc)
@@ -350,7 +356,9 @@ def send_report(message):
      #   insert = DBconnection(sqlstatement,insert_statement)
     else:
         print("not check")
-        bot.reply_to(message,"Im sorry, " + message.chat.first_name + " you do not satisfy the requirements for a detailed report yet.")
+        bot.reply_to(message,"Im sorry, " + message.chat.first_name + " ,you do not satisfy the requirements for a detailed report yet.")
+
+
         
 #############################################################################################################################################
 
@@ -610,23 +618,28 @@ def send_invest(message):
 
     bot.reply_to(message, "Your current capital investment is $" + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
 
-
+# invest $10
 @bot.message_handler(content_types=['text'])
 def setCapital(message):
     userid = message.chat.id
     sql_statement = ""
     msg = message.text.lower()
     msg = msg.strip()
-    if (msg[:6] == 'invest'):
-        amount = msg[6:].strip()
+    if (msg[:6] == 'invest' and msg[7] == "$"):
+        amount = msg[8:].strip()
         if (amount.isdigit() == False):
             bot.send_message(userid, "Please make sure your investment value consists of only digits.")
+            return
         else:
             amount = float(amount)
-            sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
-            sql_run = (amount, userid)
-            DBconnection(sql_statement, sql_run)
-            bot.send_message(userid, "Your investment value has been demarcated.")
+            if amount < 1000:
+                bot.send_message(userid, "Investment value has to be at least $1000. Please try again.")
+                return
+            else:
+                sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
+                sql_run = (amount, userid)
+                DBconnection(sql_statement, sql_run)
+                bot.send_message(userid, "Your investment value has been demarcated.")
 
 
 #'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
@@ -635,23 +648,22 @@ def findCapital(msg):
         if '$' in msg:
             return word
 
-@bot.message_handler(func=lambda msg:msg.text is not None and '$' in msg.text)
-def getCapital(message):
-    userid = message.chat.id
-    sentence = message.text.split()
-    sentence = sentence[1]
-    capital = sentence[1:]
-    sql_statement = "UPDATE telegramusers set capital = %r where userid = %r"
-    data = (float(capital), userid)
-    conn = DBconnection(sql_statement,data)
+# @bot.message_handler(func=lambda msg:msg.text is not None and '$' in msg.text)
+# def getCapital(message):
+#     userid = message.chat.id
+#     sentence = message.text.split()
+#     sentence = sentence[1]
+#     capital = sentence[1:]
+#     sql_statement = "UPDATE telegramusers set capital = %r where userid = %r"
+#     data = (float(capital), userid)
+#     conn = DBconnection(sql_statement,data)
     
-    bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
+#     bot.reply_to(message, "Your intended initial investment has been recorded, we will soon send you a collated financial instruments for you.")
 
 
-
-def generatePDF(userid):
-    sql_statement = "SELECT symbol, purchase_price, lot_size from portfolio where userid = %s"
-    data = userid
+def generatePDF(userid, maxportfolioid):
+    sql_statement = "SELECT symbol, purchase_price, lot_size from portfolio where userid = %s and portfolioid = %s"
+    data = (userid, maxportfolioid)
     connection = DBconnection(sql_statement,data)
     Symbol = [i[0] for i in connection]
     PurchasePrice = [i[1] for i in connection]
@@ -680,7 +692,7 @@ def generatePDF(userid):
 
         pdf.ln()
         pdf.set_font('Courier', 'B', 12)
-        pdf.multi_cell(0, 5, 'A detailed analysis on' + Symbol[i] + '---------------')
+        pdf.multi_cell(0, 5, 'A detailed analysis on ' + Symbol[i] + '---------------')
         
 
     #pdf.set_y(0) #on top of the page
@@ -692,16 +704,14 @@ def generatePDF(userid):
     pdf.output(str(userid) +'.pdf', 'F')
     return pdf
 
-@bot.message_handler(commands=['viewproposedproducts'])
-def send_proposed(message):
-    userid = message.chat.id
-    sql_statement = "Select capital, risk_level from telegramusers where userid = %r"
-    retrieved_data = DBconnection(sql_statement,userid)
-    print(retrieved_data[0])
+# @bot.message_handler(commands=['viewproposedproducts'])
+# def send_proposed(message):
+#     userid = message.chat.id
+#     sql_statement = "Select capital, risk_level from telegramusers where userid = %r"
+#     retrieved_data = DBconnection(sql_statement,userid)
+#     print(retrieved_data[0])
 
-@bot.message_handler(commands=['commands'])
-def display_commands(message):
-    bot.reply_to(message, "The possible commands here are:\n /start \n /information \n /invest \n /viewproposedproducts")
+
     
 while True:
     try:
