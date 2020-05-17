@@ -325,7 +325,7 @@ def send_information(message):
 
 @bot.message_handler(commands=['commands'])
 def display_commands(message):
-    bot.reply_to(message, "The possible commands here are:\n /start \n /information \n /invest \n /generateportfolio \n /report")
+    bot.reply_to(message, "The possible commands here are:\n /start \n /begin \n /information \n /invest \n /generateportfolio \n /report")
     
 @bot.message_handler(commands=['report'])
 def send_report(message):
