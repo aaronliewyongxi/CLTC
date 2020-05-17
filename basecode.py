@@ -611,7 +611,7 @@ def send_invest(message):
     sql_statement = "Select capital from telegramusers where userid = %r"
     conn = DBconnection(sql_statement,userid)
 
-    bot.reply_to(message, "Your current capital investment is $" + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly")
+    bot.reply_to(message, "Your current capital investment is $" + str(conn[0][0]) + ". If you would like to change the amount simply type invest amount for example invest $100000, we will update you with a new investment portfolio accordingly.\nTo generate your portfolio: /generateportfolio")
 
 # invest $10
 @bot.message_handler(content_types=['text'])
@@ -634,7 +634,7 @@ def setCapital(message):
                 sql_statement = """UPDATE telegramusers SET capital = %s where userid = %s"""
                 sql_run = (amount, userid)
                 DBconnection(sql_statement, sql_run)
-                bot.send_message(userid, "Your investment value has been demarcated.")
+                bot.send_message(userid, "Your investment value has been demarcated.\nYou may type /generateportfolio to generate your portfolio if you have completed your risk assessment quiz.")
 
 
 #'chat': {'id': 907456913, 'first_name': 'ExpediteSG', 'username': 'EXPEDITESG', 'type': 'private'}, 'date': 1589559756, 'text': 'Invest $50000'}}
